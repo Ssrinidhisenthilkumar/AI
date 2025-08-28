@@ -10,21 +10,13 @@
         body {
             font-family: 'Poppins', sans-serif;
             background-color: #8EC5FC;
-            /* Increased fill-opacity from 0.1 to 0.3 to make shapes darker */
             background-image: url("data:image/svg+xml,%3Csvg width='120' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill-opacity='0.3' fill='%23ffffff'%3E%3Cpath transform='translate(10 10) rotate(15 16 16)' d='M15.5 2.5l-13 13L0 30l1.5 1.5 14.5-2.5 13-13L15.5 2.5zm-1 1l11.5 11.5-12 12-11.5-11.5 12-12z'/%3E%3Cpath transform='translate(70 80) rotate(-10 12 12)' d='M12 0l12 21H0z'/%3E%3Cpath transform='translate(80 15) rotate(25 10 10)' d='M18 3h-3a2 2 0 00-2 2v10a4 4 0 01-4 4H5a2 2 0 00-2 2v0a2 2 0 002 2h4a6 6 0 006-6V5a4 4 0 014-4h1a2 2 0 002-2v0a2 2 0 00-2-2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"), linear-gradient(120deg, #E0C3FC 0%, #8EC5FC 100%);
-            /* Added animation property */
             animation: moveShapes 20s linear infinite;
         }
 
-        /* Keyframes for the background animation */
         @keyframes moveShapes {
-            from {
-                background-position: 0 0;
-            }
-            to {
-                /* The values match the SVG size for a seamless loop */
-                background-position: 120px 120px;
-            }
+            from { background-position: 0 0; }
+            to { background-position: 120px 120px; }
         }
 
         .chat-bubble-user {
@@ -52,14 +44,13 @@
             color: white !important;
             border-color: #DC2626 !important;
         }
-        /* Simple dot animation for loading */
         .dot-flashing {
             position: relative;
             width: 10px;
             height: 10px;
             border-radius: 5px;
-            background-color: #9880ff;
-            color: #9880ff;
+            background-color: #A8A29E;
+            color: #A8A29E;
             animation: dotFlashing 1s infinite linear alternate;
             animation-delay: .5s;
         }
@@ -74,8 +65,8 @@
             width: 10px;
             height: 10px;
             border-radius: 5px;
-            background-color: #9880ff;
-            color: #9880ff;
+            background-color: #A8A29E;
+            color: #A8A29E;
             animation: dotFlashing 1s infinite alternate;
             animation-delay: 0s;
         }
@@ -84,8 +75,8 @@
             width: 10px;
             height: 10px;
             border-radius: 5px;
-            background-color: #9880ff;
-            color: #9880ff;
+            background-color: #A8A29E;
+            color: #A8A29E;
             animation: dotFlashing 1s infinite alternate;
             animation-delay: 1s;
         }
@@ -119,8 +110,9 @@
             <div class="flex items-center space-x-3">
                 <input type="text" id="user-input" placeholder="Type your message..." class="flex-1 w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition bg-white/70">
                 <button id="send-btn" class="bg-blue-500 text-white rounded-full p-3 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-300 ease-in-out transform hover:scale-105">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0.5 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    <!-- Changed to a send icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
                     </svg>
                 </button>
             </div>
@@ -137,7 +129,11 @@
         let currentProblemState = null;
 
         // --- Gemini API Configuration ---
-        const apiKey = ""; // This will be handled by the environment.
+        // IMPORTANT: For Vercel deployment, you MUST set your API key as an Environment Variable.
+        // This code assumes you have an environment variable named `VITE_GEMINI_API_KEY` or similar,
+        // which you would then expose to your frontend code securely.
+        // For this example, we'll leave it blank, as the environment should provide it.
+        const apiKey = ""; 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
         const systemPrompt = `You are an AI Math Tutor. Your goal is to help users learn.
             When a user asks a math problem:
@@ -153,44 +149,86 @@
         // --- Event Listeners ---
         sendBtn.addEventListener('click', handleUserInput);
         userInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') handleUserInput();
+            if (event.key === 'Enter' && !userInput.disabled) handleUserInput();
         });
 
         function handleUserInput() {
             const query = userInput.value.trim();
             if (!query) return;
+
             addMessage(query, 'user');
             userInput.value = '';
+            
+            // Disable input while fetching response
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+            sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
             getAiResponse(query);
+        }
+
+        function enableInput() {
+            userInput.disabled = false;
+            sendBtn.disabled = false;
+            sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            userInput.focus();
         }
 
         async function getAiResponse(query) {
             const loadingBubbleId = `loading-${Date.now()}`;
             addMessage('<div class="dot-flashing"></div>', 'ai', loadingBubbleId);
 
-            try {
-                const payload = {
-                    contents: [{ parts: [{ text: query }] }],
-                    systemInstruction: { parts: [{ text: systemPrompt }] },
-                };
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+            const maxRetries = 3;
+            let attempt = 0;
 
-                const result = await response.json();
-                const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            while (attempt < maxRetries) {
+                try {
+                    const payload = {
+                        contents: [{ parts: [{ text: query }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
+                    };
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
 
-                if (aiText) {
-                    processAiResponse(aiText, loadingBubbleId);
-                } else {
-                    updateMessage(loadingBubbleId, "I'm sorry, I couldn't generate a response.");
+                    // Retry on server errors or rate limiting
+                    if (response.status === 429 || response.status >= 500) {
+                        throw new Error(`API error: ${response.status} ${response.statusText}`);
+                    }
+
+                    // Don't retry on client errors (like bad API key)
+                    if (!response.ok) {
+                        const errorBody = await response.text();
+                        console.error("Non-retriable API error:", response.status, errorBody);
+                        updateMessage(loadingBubbleId, "There was an issue with the request. Please check the API key or input.");
+                        enableInput();
+                        return;
+                    }
+
+                    const result = await response.json();
+                    const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    if (aiText) {
+                        processAiResponse(aiText, loadingBubbleId);
+                    } else {
+                        updateMessage(loadingBubbleId, "I'm sorry, I couldn't generate a response.");
+                    }
+                    enableInput();
+                    return; // Success, exit the loop
+
+                } catch (error) {
+                    console.error(`Attempt ${attempt + 1} failed:`, error);
+                    attempt++;
+                    if (attempt >= maxRetries) {
+                        updateMessage(loadingBubbleId, "Oops! Something went wrong after multiple attempts.");
+                        enableInput();
+                    } else {
+                        const delay = Math.pow(2, attempt) * 1000; // 2s, 4s
+                        await new Promise(res => setTimeout(res, delay));
+                    }
                 }
-            } catch (error) {
-                console.error("Error fetching AI response:", error);
-                updateMessage(loadingBubbleId, "Oops! Something went wrong.");
             }
         }
 
@@ -210,8 +248,10 @@
                     updateMessage(loadingId, data.responseText);
                 }
             } catch (error) {
+                console.error("Failed to parse AI response JSON:", error);
                 currentProblemState = null;
-                updateMessage(loadingId, text); // Fallback for plain text
+                // Fallback for plain text or malformed JSON
+                updateMessage(loadingId, text); 
             }
         }
 
@@ -252,12 +292,12 @@
                 buttonElement.disabled = true;
                 buttonElement.classList.add('wrong-answer');
                 
-                if (currentProblemState.attempts < 4) {
+                if (currentProblemState.attempts < 3) { // Allow 2 hints
                     // Provide a hint
                     const hint = hints[currentProblemState.attempts - 1] || "Let's try thinking about it another way.";
                     setTimeout(() => addMessage(`Not quite. Here's a hint: <strong>${hint}</strong>`, 'ai'), 300);
                 } else {
-                    // Fourth attempt, reveal answer
+                    // Third wrong attempt, reveal answer
                     disableAllOptions(true); // Reveal correct answer
                     setTimeout(() => addMessage(`It looks like this one was tricky. The correct answer was <strong>${correctAnswer}</strong>.`, 'ai'), 300);
                 }
@@ -265,6 +305,7 @@
         }
         
         function disableAllOptions(revealAnswer = false) {
+            if (!currentProblemState || !currentProblemState.container) return;
             const { container, correctAnswer } = currentProblemState;
             const buttons = container.querySelectorAll('.option-btn');
             buttons.forEach(button => {
@@ -288,6 +329,7 @@
             messageWrapper.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
             messageBubble.className = `p-3 rounded-lg max-w-xs lg:max-w-md ${sender === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'}`;
             if (id) messageBubble.id = id;
+            // Use innerHTML to correctly render HTML tags like <strong> from the AI response
             messageBubble.innerHTML = `<p class="text-sm">${text}</p>`;
             messageWrapper.appendChild(messageBubble);
             chatBox.appendChild(messageWrapper);
